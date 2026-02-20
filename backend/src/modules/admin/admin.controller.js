@@ -1,5 +1,6 @@
 const User = require('../users/user.model');
 const Task = require('../tasks/task.model');
+const { sendSuccess } = require('../../utils/response');
 
 /**
  * @desc    Get progress for all users
@@ -8,15 +9,16 @@ const Task = require('../tasks/task.model');
  */
 exports.getAllUsersProgress = async (req, res, next) => {
   try {
+    // 1. Fetch all users
     const users = await User.find().select('name email');
 
+    // 2. Calculate progress for each user
     const data = await Promise.all(
       users.map(async (user) => {
-        const total = await Task.countDocuments({ owner: user._id });
-        const completed = await Task.countDocuments({
-          owner: user._id,
-          status: 'done',
-        });
+        const [total, completed] = await Promise.all([
+          Task.countDocuments({ owner: user._id }),
+          Task.countDocuments({ owner: user._id, status: 'done' })
+        ]);
 
         return {
           userId: user._id,
@@ -29,12 +31,15 @@ exports.getAllUsersProgress = async (req, res, next) => {
       })
     );
 
-    res.status(200).json({
-      status: 'success',
-      results: data.length,
-      data
+    return sendSuccess(res, {
+      message: 'All users progress fetched successfully',
+      data: { 
+        count: data.length,
+        progress: data 
+      }
     });
   } catch (error) {
+    console.error(`[ADMIN_PROGRESS_ERROR]: ${error.message}`, error);
     next(error);
   }
 };

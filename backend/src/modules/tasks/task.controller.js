@@ -4,6 +4,9 @@ const { sendSuccess, sendError, sendPaginated } = require('../../utils/response'
 // ─── Create Task ──────────────────────────────────────────────────────────────
 const createTask = async (req, res, next) => {
   try {
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return sendError(res, { statusCode: 400, message: 'Task data is required' });
+    }
     const task = await taskService.createTask(req.body, req.user.id);
     return sendSuccess(res, {
       statusCode: 201,
@@ -11,6 +14,7 @@ const createTask = async (req, res, next) => {
       data: { task },
     });
   } catch (err) {
+    console.error(`[TASK_CREATE_ERROR]: ${err.message}`, err);
     next(err);
   }
 };
@@ -30,6 +34,7 @@ const getMyTasks = async (req, res, next) => {
       limit,
     });
   } catch (err) {
+    console.error(`[TASK_GET_MY_ERROR]: ${err.message}`, err);
     next(err);
   }
 };
@@ -46,6 +51,7 @@ const getAllTasks = async (req, res, next) => {
       limit,
     });
   } catch (err) {
+    console.error(`[TASK_GET_ALL_ERROR]: ${err.message}`, err);
     next(err);
   }
 };
@@ -66,6 +72,7 @@ const getTaskById = async (req, res, next) => {
 
     return sendSuccess(res, { data: { task } });
   } catch (err) {
+    console.error(`[TASK_GET_BY_ID_ERROR]: ${err.message}`, err);
     next(err);
   }
 };
@@ -87,6 +94,7 @@ const updateTask = async (req, res, next) => {
     const updated = await taskService.updateTask(req.params.id, req.body);
     return sendSuccess(res, { message: 'Task updated successfully', data: { task: updated } });
   } catch (err) {
+    console.error(`[TASK_UPDATE_ERROR]: ${err.message}`, err);
     next(err);
   }
 };
@@ -108,6 +116,7 @@ const deleteTask = async (req, res, next) => {
     await taskService.deleteTask(req.params.id);
     return sendSuccess(res, { message: 'Task deleted successfully' });
   } catch (err) {
+    console.error(`[TASK_DELETE_ERROR]: ${err.message}`, err);
     next(err);
   }
 };
@@ -120,6 +129,7 @@ const getTaskStats = async (req, res, next) => {
     const stats = await taskService.getTaskStats(ownerId);
     return sendSuccess(res, { data: { stats } });
   } catch (err) {
+    console.error(`[TASK_STATS_ERROR]: ${err.message}`, err);
     next(err);
   }
 };
