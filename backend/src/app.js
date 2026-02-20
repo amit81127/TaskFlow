@@ -18,6 +18,10 @@ const app = express();
 // ─── Trust Proxy ──────────────────────────────────────────────────────────────
 app.set('trust proxy', 1);
 
+// ─── Body Parsers (MUST BE BEFORE SANITIZATION) ──────────────────────────────
+app.use(express.json({ limit: '10kb' }));          
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 app.use(
   cors({
@@ -78,10 +82,6 @@ app.use(hpp({
 }));
 
 app.use(compression());
-
-// ─── Body Parsers ─────────────────────────────────────────────────────────────
-app.use(express.json({ limit: '10kb' }));          // Limit payload size
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
 // ─── Request Logger ───────────────────────────────────────────────────────────
 if (config.isDev) {

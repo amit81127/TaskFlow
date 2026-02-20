@@ -6,19 +6,29 @@ const { sendSuccess, sendError } = require('../../utils/response');
 // ─── Register ─────────────────────────────────────────────────────────────────
 const register = async (req, res, next) => {
   try {
+    if (!req.body) {
+      return sendError(res, { statusCode: 400, message: 'Request body is missing' });
+    }
+
     const { name, email, password } = req.body;
 
     // Check if email already exists — search ALL users including deactivated
-    // NOTE: We must bypass the pre(/^find/) isActive filter here, otherwise
-    // a deactivated user with same email would not be found, causing a 11000
-    // duplicate key error from MongoDB instead of a clean 409 response.
-    const existingUser = await User.findOne({ email, isActive: { $in: [true, false] } });
+    const existingUser = await User.findOne({ 
+      email: email.toLowerCase(), 
+      isActive: { $in: [true, false] } 
+    });
+
     if (existingUser) {
       return sendError(res, { statusCode: 409, message: 'Email is already registered' });
     }
 
     // Create user (password hashed by model pre-save hook)
-    const user = await User.create({ name, email, password, role: req.body.role || 'user' });
+    const user = await User.create({ 
+      name, 
+      email: email.toLowerCase(), 
+      password, 
+      role: req.body.role || 'user' 
+    });
 
     // Generate tokens
     const accessToken = signAccessToken({ id: user._id, role: user.role });
@@ -42,6 +52,7 @@ const register = async (req, res, next) => {
       },
     });
   } catch (err) {
+    console.error(`[AUTH_REGISTER_ERROR]: ${err.message}`, err);
     next(err);
   }
 };
@@ -49,30 +60,44 @@ const register = async (req, res, next) => {
 // ─── Login ────────────────────────────────────────────────────────────────────
 const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    // 1. Guard against missing body or fields (even though validation should catch it)
+    if (!req.body) {
+      return sendError(res, { statusCode: 400, message: 'Request body is missing' });
+    }
 
-    // Fetch user with password field (includes deactivated users)
-    const user = await userService.findUserByEmailWithPassword(email);
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return sendError(res, { statusCode: 400, message: 'Email and password are required' });
+    }
+
+    // 2. Fetch user (using lean() for speed and select to be explicit)
+    // We use User.findOne directly here to be absolute about what we're fetching
+    const user = await User.findOne({ 
+      email: email.toLowerCase(), 
+      isActive: { $in: [true, false] } 
+    }).select('+password +role +name +email +isActive');
+
+    // 3. Guard against null user
     if (!user) {
       return sendError(res, { statusCode: 401, message: 'Invalid email or password' });
     }
 
-    // Check if account is deactivated
-    if (!user.isActive) {
+    // 4. Check if account is deactivated
+    if (user.isActive === false) {
       return sendError(res, { statusCode: 403, message: 'Account has been deactivated. Please contact support.' });
     }
 
-    // Verify password
+    // 5. Verify password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return sendError(res, { statusCode: 401, message: 'Invalid email or password' });
     }
 
-    // Generate tokens
+    // 6. Generate tokens
     const accessToken = signAccessToken({ id: user._id, role: user.role });
     const refreshToken = signRefreshToken({ id: user._id });
 
-    // Persist refresh token & update lastLogin
+    // 7. Persist refresh token & update lastLogin
     await userService.updateRefreshToken(user._id, refreshToken);
 
     return sendSuccess(res, {
@@ -90,6 +115,7 @@ const login = async (req, res, next) => {
       },
     });
   } catch (err) {
+    console.error(`[AUTH_LOGIN_ERROR]: ${err.message}`, err);
     next(err);
   }
 };
