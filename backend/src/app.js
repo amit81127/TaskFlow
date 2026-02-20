@@ -12,23 +12,26 @@ const { errorHandler, notFound } = require('./middleware/error.middleware');
 
 const app = express();
 
-// ─── Production Middleware ────────────────────────────────────────────────────
-app.use(helmet());           // Security headers
-app.use(compression());      // Gzip compression
+// ─── Trust Proxy ──────────────────────────────────────────────────────────────
+// Essential for Render/Vercel/Heroku to get correct IP and protocol
+app.set('trust proxy', 1);
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
+// Must come before helmet and routes to handle preflight (OPTIONS) correctly
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, curl, Postman, server-to-server)
       if (!origin) return callback(null, true);
 
-      // In development: allow any localhost origin (any port — handles Vite port conflicts)
       if (config.isDev && /^http:\/\/localhost(:\d+)?$/.test(origin)) {
         return callback(null, true);
       }
 
-      // In production: whitelist only
+      // Explicitly allow the user's specific vercel app if origins are messed up in env
+      if (origin === 'https://task-flow-seven-taupe.vercel.app') {
+        return callback(null, true);
+      }
+
       if (config.allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
@@ -40,6 +43,12 @@ app.use(
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
+
+// ─── Production Middleware ────────────────────────────────────────────────────
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+app.use(compression());
 
 // ─── Body Parsers ─────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10kb' }));          // Limit payload size

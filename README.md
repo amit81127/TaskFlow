@@ -33,21 +33,17 @@ TaskFlow is a high-performance, minimalist MERN stack application designed for p
 
 ## 🛠️ Installation & Setup
 
-### 1. Backend Configuration
-Navigate to the `/backend` directory:
-```bash
-npm install
-# Create a .env file based on .env.example
-npm run dev
-```
+### 1. Backend Configuration (Render)
+Navigate to the `/backend` directory and set these Environment Variables in your Render Dashboard:
+- `NODE_ENV`: `production`
+- `MONGO_URI`: Your MongoDB connection string
+- `JWT_SECRET`: A long random string
+- `JWT_REFRESH_SECRET`: Another long random string
+- `ALLOWED_ORIGINS`: `https://task-flow-seven-taupe.vercel.app` (Add your frontend URL here!)
 
-### 2. Frontend Configuration
-Navigate to the `/frontend` directory:
-```bash
-npm install
-# Ensure the backend VITE_API_URL is configured
-npm run dev
-```
+### 2. Frontend Configuration (Vercel)
+Set this Environment Variable in your Vercel Dashboard:
+- `VITE_API_BASE_URL`: `https://taskflow-jwib.onrender.com/api/v1`
 
 ---
 
