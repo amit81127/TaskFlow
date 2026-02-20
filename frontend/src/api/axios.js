@@ -55,7 +55,7 @@ api.interceptors.response.use(
     // Only retry once on 401 (access token expired)
     if (error.response?.status === 401 && !originalRequest._retry) {
       // Skip retry for auth endpoints to avoid loops
-      if (originalRequest.url?.includes('/auth/')) {
+      if (originalRequest.url?.includes('auth/')) {
         clearTokens();
         window.dispatchEvent(new Event('auth:logout'));
         return Promise.reject(error);
