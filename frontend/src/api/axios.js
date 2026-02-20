@@ -2,8 +2,14 @@ import axios from 'axios';
 import { getAccessToken, getRefreshToken, storeTokens, clearTokens } from '../utils/token';
 
 // ─── Create Axios instance ────────────────────────────────────────────────────
+const getBaseURL = () => {
+  const envUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://taskflow-jwib.onrender.com/api/v1';
+  // Ensure it ends with / for relative URL resolution
+  return envUrl.endsWith('/') ? envUrl : `${envUrl}/`;
+};
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://taskflow-jwib.onrender.com/api/v1',
+  baseURL: getBaseURL(),
   headers: { 'Content-Type': 'application/json' },
   timeout: 15000,
 });
