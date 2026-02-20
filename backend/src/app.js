@@ -3,6 +3,9 @@ const cors = require('cors');
 const path = require('path');
 const helmet = require('helmet');
 const compression = require('compression');
+const rateLimit = require('express-rate-limit');
+const mongoSanitize = require('express-mongo-sanitize');
+const hpp = require('hpp');
 const YAML = require('yamljs');
 const swaggerUi = require('swagger-ui-express');
 
@@ -25,11 +28,12 @@ app.use(
       const allowed = [
         'https://task-flow-seven-taupe.vercel.app',
         'https://task-flow-seven.vercel.app',
+        'https://amitkumar8112.vercel.app',
         ...config.allowedOrigins
       ];
 
       // Exact match or subdomain match for Vercel/Localhost
-      if (allowed.includes(origin) || origin.includes('localhost')) {
+      if (allowed.includes(origin) || origin.includes('localhost') || origin.includes('vercel.app')) {
         return callback(null, true);
       }
 
@@ -43,11 +47,36 @@ app.use(
   })
 );
 
+// ─── Rate Limiting ────────────────────────────────────────────────────────────
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many requests from this IP, please try again after 15 minutes',
+  },
+  skip: (req) => req.url === '/api/v1/health', // Don't rate limit health checks
+});
+
+// Apply rate limiter to all api routes
+app.use('/api', limiter);
+
 // ─── Production Middleware ────────────────────────────────────────────────────
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
   crossOriginOpenerPolicy: { policy: "unsafe-none" }
 }));
+
+// Data sanitization against NoSQL query injection
+app.use(mongoSanitize());
+
+// Prevent HTTP Parameter Pollution
+app.use(hpp({
+  whitelist: ['status', 'priority', 'dueDate', 'tags'] // Allow duplicate params for these fields
+}));
+
 app.use(compression());
 
 // ─── Body Parsers ─────────────────────────────────────────────────────────────

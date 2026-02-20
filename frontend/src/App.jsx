@@ -7,6 +7,7 @@ import Register from './auth/Register';
 import Dashboard from './pages/Dashboard';
 import Tasks from './pages/Tasks';
 import AdminProgress from './pages/AdminProgress';
+import LandingPage from './pages/LandingPage';
 import Loader from './components/Loader';
 
 // ── 404 — declared BEFORE App so it is in scope when used in JSX ─────────────
@@ -61,11 +62,8 @@ const App = () => {
             </ProtectedRoute>
           } />
 
-          {/* Root: send authenticated users to dashboard, guests to login */}
-          <Route
-            path="/"
-            element={<Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />}
-          />
+          {/* Root: Splash / Landing */}
+          <Route path="/" element={<LandingPage />} />
 
           {/* 404 */}
           <Route path="*" element={<NotFound />} />

@@ -19,7 +19,11 @@ services:
       - key: JWT_REFRESH_SECRET
         generateValue: true
       - key: ALLOWED_ORIGINS
-        value: "https://task-flow-seven-taupe.vercel.app,https://task-flow-seven.vercel.app"
+        value: "https://task-flow-seven-taupe.vercel.app,https://task-flow-seven.vercel.app,https://task-manager-ui.onrender.com"
+      - key: JWT_EXPIRES_IN
+        value: "15m"
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: "7d"
 
   # ─── Frontend Service (Optional, if you want both on Render) ──────────────────
   - type: static
@@ -33,7 +37,7 @@ services:
     headers:
       - path: /*
         name: Cache-Control
-        value: no-cache
+        value: "public, max-age=0, must-revalidate"
     routes:
       - type: rewrite
         source: /*

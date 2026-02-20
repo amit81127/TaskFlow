@@ -9,7 +9,7 @@ export default defineConfig({
     proxy: {
       // Forward all /api requests to backend — eliminates CORS in dev
       '/api': {
-        target: 'https://task-flow-seven-taupe.vercel.app',
+        target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
       },
