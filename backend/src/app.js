@@ -18,81 +18,55 @@ const app = express();
 // ─── 1. Trust Proxy ──────────────────────────────────────────────────────────
 app.set('trust proxy', 1);
 
-// ─── Express 5 Compatibility Hack (Solves Read-only req.query issue) ──────────
-// In Express 5, req.query is a getter. Older middlewares (like HPP & mongoSanitize) 
-// try to re-assign it, causing a TypeError. This makes it writable globally.
-app.use((req, res, next) => {
-  const query = req.query;
-  Object.defineProperty(req, 'query', {
-    value: query,
-    writable: true,
-    configurable: true,
-    enumerable: true
-  });
-  next();
-});
-
 // ─── 2. CORS (MUST BE FIRST) ──────────────────────────────────────────────────
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl)
       if (!origin) return callback(null, true);
-
       const allowed = [
         'https://task-flow-seven-taupe.vercel.app',
         'https://task-flow-seven.vercel.app',
         'https://amitkumar8112.vercel.app',
         ...config.allowedOrigins
       ];
-
-      // Exact match or subdomain match for Vercel/Localhost
       if (allowed.includes(origin) || origin.includes('localhost') || origin.includes('vercel.app')) {
         return callback(null, true);
       }
-
-      console.error(`🚨 CORS REJECTED: ${origin}. Expected one of: ${allowed.join(', ')}`);
-      callback(new Error('CORS blocked this request.'));
+      callback(null, false); // Fail silently or handle error
     },
-    optionsSuccessStatus: 200,
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept', 'X-Requested-With'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept'],
   })
 );
 
-// ─── 3. Body Parsers (MUST BE BEFORE SANITIZATION) ──────────────────────────
+// ─── 3. Body Parsers ──────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10kb' }));          
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
-// ─── 4. Security Middlewares ──────────────────────────────────────────────────
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-  crossOriginOpenerPolicy: { policy: "unsafe-none" }
-}));
-
-// 🛡️ THE FIX: Disable req.query sanitization to prevent Express 5 crash
+// 🛡️ 4. Data Sanitization (BEFORE Helmet/HPP to avoid mutation conflicts)
+// We disable sanitizeQuery because Express 5 makes req.query read-only.
 app.use(mongoSanitize({
   sanitizeQuery: false,
 }));
 
-// Prevent HTTP Parameter Pollution
+// ─── 5. Security & Optimization ───────────────────────────────────────────────
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
 app.use(hpp({
   whitelist: ['status', 'priority', 'dueDate', 'tags'] 
 }));
 
 app.use(compression());
 
-// Apply rate limiter to all api routes
+// ─── 6. Rate Limiting ─────────────────────────────────────────────────────────
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, 
   max: 100, 
   standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    success: false,
-    message: 'Too many requests from this IP, please try again after 15 minutes',
-  },
+  message: { success: false, message: 'Rate limit exceeded.' },
   skip: (req) => req.url === '/api/v1/health', 
 });
 app.use('/api', limiter);
