@@ -19,7 +19,7 @@ services:
       - key: JWT_REFRESH_SECRET
         generateValue: true
       - key: ALLOWED_ORIGINS
-        value: "https://your-frontend-domain.onrender.com"
+        value: "https://task-flow-seven-taupe.vercel.app,https://task-flow-seven.vercel.app"
 
   # ─── Frontend Service (Optional, if you want both on Render) ──────────────────
   - type: static
@@ -39,5 +39,5 @@ services:
         source: /*
         destination: /index.html
     envVars:
-      - key: VITE_API_URL
+      - key: VITE_API_BASE_URL
         value: "https://task-manager-api.onrender.com/api/v1"

@@ -3,8 +3,16 @@ import { getAccessToken, getRefreshToken, storeTokens, clearTokens } from '../ut
 
 // ─── Create Axios instance ────────────────────────────────────────────────────
 const getBaseURL = () => {
-  const envUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://taskflow-jwib.onrender.com/api/v1';
-  // Ensure it ends with / for relative URL resolution
+  // Use VITE_API_URL from Vercel/Render, or VITE_API_BASE_URL (legacy), or fallback
+  let envUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://taskflow-jwib.onrender.com';
+  
+  // 🎯 BULLETPROOF LOGIC: If the user provided the domain but forgot /api/v1, append it.
+  // This matches the "Step 2" mounting in the backend.
+  if (!envUrl.includes('/api/v1')) {
+    envUrl = envUrl.endsWith('/') ? `${envUrl}api/v1` : `${envUrl}/api/v1`;
+  }
+  
+  // Ensure it ends with / for correct relative path resolution
   return envUrl.endsWith('/') ? envUrl : `${envUrl}/`;
 };
 
@@ -77,7 +85,7 @@ api.interceptors.response.use(
 
       try {
         // Use the shared api instance (goes through Vite proxy, same baseURL)
-        const { data } = await api.post('/auth/refresh-token', { refreshToken });
+        const { data } = await api.post('auth/refresh-token', { refreshToken });
 
         const { accessToken, refreshToken: newRefresh } = data.data;
         storeTokens({ accessToken, refreshToken: newRefresh });
