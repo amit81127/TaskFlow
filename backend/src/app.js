@@ -13,40 +13,40 @@ const { errorHandler, notFound } = require('./middleware/error.middleware');
 const app = express();
 
 // ─── Trust Proxy ──────────────────────────────────────────────────────────────
-// Essential for Render/Vercel/Heroku to get correct IP and protocol
 app.set('trust proxy', 1);
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
-// Must come before helmet and routes to handle preflight (OPTIONS) correctly
 app.use(
   cors({
     origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl)
       if (!origin) return callback(null, true);
 
-      if (config.isDev && /^http:\/\/localhost(:\d+)?$/.test(origin)) {
+      const allowed = [
+        'https://task-flow-seven-taupe.vercel.app',
+        'https://task-flow-seven.vercel.app',
+        ...config.allowedOrigins
+      ];
+
+      // Exact match or subdomain match for Vercel/Localhost
+      if (allowed.includes(origin) || origin.includes('localhost')) {
         return callback(null, true);
       }
 
-      // Explicitly allow the user's specific vercel app if origins are messed up in env
-      if (origin === 'https://task-flow-seven-taupe.vercel.app') {
-        return callback(null, true);
-      }
-
-      if (config.allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      callback(new Error(`CORS: Origin ${origin} not allowed`));
+      console.error(`🚨 CORS REJECTED: ${origin}. Expected one of: ${allowed.join(', ')}`);
+      callback(new Error('CORS blocked this request.'));
     },
+    optionsSuccessStatus: 200,
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept', 'X-Requested-With'],
   })
 );
 
 // ─── Production Middleware ────────────────────────────────────────────────────
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginOpenerPolicy: { policy: "unsafe-none" }
 }));
 app.use(compression());
 

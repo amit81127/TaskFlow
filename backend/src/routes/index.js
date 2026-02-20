@@ -7,6 +7,20 @@ const adminRoutes = require('../modules/admin/admin.routes');
 
 const router = Router();
 
+router.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Welcome to Task Manager API v1 🚀',
+    endpoints: {
+      auth: '/auth',
+      tasks: '/tasks',
+      users: '/users',
+      admin: '/admin',
+      health: '/health'
+    }
+  });
+});
+
 // ─── Health Check ─────────────────────────────────────────────────────────────
 router.get('/health', (req, res) => {
   res.status(200).json({
