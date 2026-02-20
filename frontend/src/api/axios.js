@@ -3,7 +3,7 @@ import { getAccessToken, getRefreshToken, storeTokens, clearTokens } from '../ut
 
 // ─── Create Axios instance ────────────────────────────────────────────────────
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://taskflow-jwib.onrender.com/api/v1',
   headers: { 'Content-Type': 'application/json' },
   timeout: 15000,
 });
