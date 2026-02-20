@@ -18,6 +18,20 @@ const app = express();
 // ─── 1. Trust Proxy ──────────────────────────────────────────────────────────
 app.set('trust proxy', 1);
 
+// ─── Express 5 Compatibility Hack (Solves Read-only req.query issue) ──────────
+// In Express 5, req.query is a getter. Older middlewares (like HPP & mongoSanitize) 
+// try to re-assign it, causing a TypeError. This makes it writable globally.
+app.use((req, res, next) => {
+  const query = req.query;
+  Object.defineProperty(req, 'query', {
+    value: query,
+    writable: true,
+    configurable: true,
+    enumerable: true
+  });
+  next();
+});
+
 // ─── 2. CORS (MUST BE FIRST) ──────────────────────────────────────────────────
 app.use(
   cors({
