@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const helmet = require('helmet');
+const compression = require('compression');
 const YAML = require('yamljs');
 const swaggerUi = require('swagger-ui-express');
 
@@ -9,6 +11,10 @@ const apiRoutes = require('./routes/index');
 const { errorHandler, notFound } = require('./middleware/error.middleware');
 
 const app = express();
+
+// ─── Production Middleware ────────────────────────────────────────────────────
+app.use(helmet());           // Security headers
+app.use(compression());      // Gzip compression
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 app.use(
@@ -39,18 +45,18 @@ app.use(
 app.use(express.json({ limit: '10kb' }));          // Limit payload size
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
-// ─── Security Headers (lightweight, no helmet dep) ───────────────────────────
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  next();
-});
-
-// ─── Request Logger (dev only) ────────────────────────────────────────────────
+// ─── Request Logger ───────────────────────────────────────────────────────────
 if (config.isDev) {
   app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
+    next();
+  });
+} else {
+  // Production logging: minimal but informative
+  app.use((req, res, next) => {
+    if (req.url !== '/api/v1/health') {
+      console.log(`[PROD] ${req.method} ${req.url} - ${req.ip}`);
+    }
     next();
   });
 }

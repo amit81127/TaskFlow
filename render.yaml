@@ -1,0 +1,43 @@
+services:
+  # ─── Backend Service ──────────────────────────────────────────────────────────
+  - type: web
+    name: task-manager-api
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: npm install
+    startCommand: npm start
+    rootDir: backend
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false # Set in Render Dashboard
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: ALLOWED_ORIGINS
+        value: "https://your-frontend-domain.onrender.com"
+
+  # ─── Frontend Service (Optional, if you want both on Render) ──────────────────
+  - type: static
+    name: task-manager-ui
+    env: static
+    plan: free
+    region: oregon
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    publishPath: dist
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: "https://task-manager-api.onrender.com/api/v1"
