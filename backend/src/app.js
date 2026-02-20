@@ -15,28 +15,10 @@ const { errorHandler, notFound } = require('./middleware/error.middleware');
 
 const app = express();
 
-// ─── Trust Proxy ──────────────────────────────────────────────────────────────
+// ─── 1. Trust Proxy ──────────────────────────────────────────────────────────
 app.set('trust proxy', 1);
 
-// ─── Express 5 Compatibility Hack (Solves Read-only req.query issue) ──────────
-// In Express 5, req.query is a getter. Older middlewares (like HPP) try to 
-// re-assign it, causing a TypeError. This middleware makes it writable.
-app.use((req, res, next) => {
-  const query = req.query;
-  Object.defineProperty(req, 'query', {
-    value: query,
-    writable: true,
-    configurable: true,
-    enumerable: true
-  });
-  next();
-});
-
-// ─── Body Parsers (MUST BE BEFORE SANITIZATION) ──────────────────────────────
-app.use(express.json({ limit: '10kb' }));          
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
-
-// ─── CORS ─────────────────────────────────────────────────────────────────────
+// ─── 2. CORS (MUST BE FIRST) ──────────────────────────────────────────────────
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -65,37 +47,41 @@ app.use(
   })
 );
 
-// ─── Rate Limiting ────────────────────────────────────────────────────────────
+// ─── 3. Body Parsers (MUST BE BEFORE SANITIZATION) ──────────────────────────
+app.use(express.json({ limit: '10kb' }));          
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+
+// ─── 4. Security Middlewares ──────────────────────────────────────────────────
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginOpenerPolicy: { policy: "unsafe-none" }
+}));
+
+// 🛡️ THE FIX: Disable req.query sanitization to prevent Express 5 crash
+app.use(mongoSanitize({
+  sanitizeQuery: false,
+}));
+
+// Prevent HTTP Parameter Pollution
+app.use(hpp({
+  whitelist: ['status', 'priority', 'dueDate', 'tags'] 
+}));
+
+app.use(compression());
+
+// Apply rate limiter to all api routes
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per window
+  windowMs: 15 * 60 * 1000, 
+  max: 100, 
   standardHeaders: true,
   legacyHeaders: false,
   message: {
     success: false,
     message: 'Too many requests from this IP, please try again after 15 minutes',
   },
-  skip: (req) => req.url === '/api/v1/health', // Don't rate limit health checks
+  skip: (req) => req.url === '/api/v1/health', 
 });
-
-// Apply rate limiter to all api routes
 app.use('/api', limiter);
-
-// ─── Production Middleware ────────────────────────────────────────────────────
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-  crossOriginOpenerPolicy: { policy: "unsafe-none" }
-}));
-
-// Data sanitization against NoSQL query injection
-app.use(mongoSanitize());
-
-// Prevent HTTP Parameter Pollution
-app.use(hpp({
-  whitelist: ['status', 'priority', 'dueDate', 'tags'] // Allow duplicate params for these fields
-}));
-
-app.use(compression());
 
 // ─── Request Logger ───────────────────────────────────────────────────────────
 if (config.isDev) {
