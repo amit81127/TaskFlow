@@ -17,7 +17,9 @@ const AdminProgress = () => {
             }
             try {
                 const res = await getAdminProgress();
-                setData(res.data.data || []);
+                // Extract the progress array from the nested structure
+                const progressData = res.data.data?.progress || [];
+                setData(progressData);
             } catch (err) {
                 setError(err.response?.data?.message || 'Failed to fetch progress data');
             } finally {
@@ -78,47 +80,47 @@ const AdminProgress = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {data.map((user) => (
+                                {Array.isArray(data) && data.map((user) => (
                                     <tr key={user._id}>
                                         <td>
                                             <div className="u-profile">
                                                 <div className="u-avatar">
-                                                    {user.name.charAt(0).toUpperCase()}
+                                                    {user.name?.charAt(0).toUpperCase() || '?'}
                                                 </div>
                                                 <div className="u-info">
-                                                    <span className="u-name">{user.name}</span>
-                                                    <span className="u-meta">{user.email}</span>
+                                                    <span className="u-name">{user.name || 'Anonymous User'}</span>
+                                                    <span className="u-meta">{user.email || 'No email provided'}</span>
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
-                                            <span className={`tag tag--${user.role}`}>
-                                                {user.role}
+                                            <span className={`tag tag--${user.role || 'user'}`}>
+                                                {user.role || 'user'}
                                             </span>
                                         </td>
                                         <td>
                                             <div className="u-workload">
-                                                <strong>{user.completedTasks}</strong>
-                                                <span>/ {user.totalTasks}</span>
+                                                <strong>{user.completedTasks || 0}</strong>
+                                                <span>/ {user.totalTasks || 0}</span>
                                             </div>
                                         </td>
                                         <td>
                                             <div className="u-progress">
                                                 <div className="u-progress-meta">
-                                                    <span className={`u-status-dot s--${user.progress >= 80 ? 'active' : user.progress > 0 ? 'warning' : 'idle'}`}></span>
-                                                    <span>{user.progress}%</span>
+                                                    <span className={`u-status-dot s--${(user.progress || 0) >= 80 ? 'active' : (user.progress || 0) > 0 ? 'warning' : 'idle'}`}></span>
+                                                    <span>{user.progress || 0}%</span>
                                                 </div>
                                                 <div className="u-progress-track">
                                                     <div
                                                         className="u-progress-fill"
-                                                        style={{ width: `${user.progress}%` }}
+                                                        style={{ width: `${user.progress || 0}%` }}
                                                     ></div>
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
                                             <span className="u-label">
-                                                {user.progress >= 80 ? 'Maintain' : user.progress > 0 ? 'Expedite' : 'Begin'}
+                                                {(user.progress || 0) >= 80 ? 'Maintain' : (user.progress || 0) > 0 ? 'Expedite' : 'Begin'}
                                             </span>
                                         </td>
                                     </tr>

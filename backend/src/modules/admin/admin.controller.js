@@ -3,43 +3,68 @@ const Task = require('../tasks/task.model');
 const { sendSuccess } = require('../../utils/response');
 
 /**
- * @desc    Get progress for all users
+ * @desc    Get progress for all users using high-performance aggregation
  * @route   GET /api/v1/admin/progress
  * @access  Private/Admin
  */
 exports.getAllUsersProgress = async (req, res, next) => {
   try {
-    // 1. Fetch all users
-    const users = await User.find().select('name email');
-
-    // 2. Calculate progress for each user
-    const data = await Promise.all(
-      users.map(async (user) => {
-        const [total, completed] = await Promise.all([
-          Task.countDocuments({ owner: user._id }),
-          Task.countDocuments({ owner: user._id, status: 'done' })
-        ]);
-
-        return {
-          userId: user._id,
-          name: user.name,
-          email: user.email,
-          progress: total === 0 ? 0 : Math.round((completed / total) * 100),
-          totalTasks: total,
-          completedTasks: completed
-        };
-      })
-    );
+    // 🔥 HIGH PERFORMANCE AGGREGATION
+    // This query calculates total and completed tasks for all users in one database trip
+    const analytics = await User.aggregate([
+      {
+        $lookup: {
+          from: 'tasks', // The 'tasks' collection name
+          localField: '_id',
+          foreignField: 'owner',
+          as: 'userTasks'
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          email: 1,
+          totalTasks: { $size: '$userTasks' },
+          completedTasks: {
+            $size: {
+              $filter: {
+                input: '$userTasks',
+                as: 'task',
+                cond: { $eq: ['$$task.status', 'done'] }
+              }
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          email: 1,
+          totalTasks: 1,
+          completedTasks: 1,
+          progress: {
+            $cond: [
+              { $eq: ['$totalTasks', 0] },
+              0,
+              { $round: [{ $multiply: [{ $divide: ['$completedTasks', '$totalTasks'] }, 100] }, 0] }
+            ]
+          }
+        }
+      },
+      { $sort: { progress: -1, name: 1 } } // Show highest performers first
+    ]);
 
     return sendSuccess(res, {
-      message: 'All users progress fetched successfully',
+      message: 'Workforce telemetry synchronized successfully',
       data: { 
-        count: data.length,
-        progress: data 
+        count: analytics.length,
+        progress: analytics 
       }
     });
   } catch (error) {
-    console.error(`[ADMIN_PROGRESS_ERROR]: ${error.message}`, error);
+    console.error(`[ADMIN_PROGRESS_AGGREGATION_ERROR]: ${error.message}`, error);
     next(error);
   }
 };

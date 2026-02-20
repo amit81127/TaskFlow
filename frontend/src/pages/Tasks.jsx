@@ -192,7 +192,7 @@ const Tasks = ({ adminView = false }) => {
 
             {loading ? <Loader /> : (
                 <div className="tasks-grid">
-                    {tasks.map((task) => (
+                    {Array.isArray(tasks) && tasks.map((task) => (
                         <div key={task._id} className="task-card">
                             <div className="task-card__top">
                                 <span className={`p-badge p--${task.priority}`}>{task.priority}</span>
