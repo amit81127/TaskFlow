@@ -74,8 +74,3 @@ taskManager/
 │   │   └── api/           # Centralized Axios services
 └── README.md
 ```
-
----
-
-## 📝 License
-Created by the Google DeepMind Agentic Coding Team as part of a high-performance demonstration.
